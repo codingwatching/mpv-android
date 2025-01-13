@@ -32,6 +32,7 @@ public class MPVLib {
 
      public static native Bitmap grabThumbnail(int dimension);
 
+     // FIXME: get methods are actually nullable
      public static native Integer getPropertyInt(@NonNull String property);
      public static native void setPropertyInt(@NonNull String property, @NonNull Integer value);
      public static native Double getPropertyDouble(@NonNull String property);
@@ -60,6 +61,13 @@ public class MPVLib {
      }
 
      public static void eventProperty(String property, boolean value) {
+          synchronized (observers) {
+               for (EventObserver o : observers)
+                    o.eventProperty(property, value);
+          }
+     }
+
+     public static void eventProperty(String property, double value) {
           synchronized (observers) {
                for (EventObserver o : observers)
                     o.eventProperty(property, value);
@@ -108,6 +116,7 @@ public class MPVLib {
           void eventProperty(@NonNull String property, long value);
           void eventProperty(@NonNull String property, boolean value);
           void eventProperty(@NonNull String property, @NonNull String value);
+          void eventProperty(@NonNull String property, double value);
           void event(int eventId);
      }
 

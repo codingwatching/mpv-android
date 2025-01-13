@@ -11,13 +11,13 @@ import is.xyz.mpv.R;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.FileObserver;
 import android.util.Log;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.loader.content.AsyncTaskLoader;
 import androidx.core.content.ContextCompat;
 import androidx.loader.content.Loader;
@@ -26,7 +26,6 @@ import java.io.File;
 import java.io.FileFilter;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -37,6 +36,7 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
 
     protected static final int PERMISSIONS_REQUEST_ID = 1001;
     protected static final String PERMISSION_PRE33 = Manifest.permission.WRITE_EXTERNAL_STORAGE;
+    @RequiresApi(33)
     protected static final String[] PERMISSIONS_POST33 = {
             Manifest.permission.READ_MEDIA_AUDIO,
             Manifest.permission.READ_MEDIA_IMAGES,
@@ -214,7 +214,7 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
      */
     @NonNull
     @Override
-    public File getPath(@NonNull final String path) {
+    public File pathFromString(@NonNull final String path) {
         return new File(path);
     }
 
@@ -224,7 +224,7 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
      */
     @NonNull
     @Override
-    public String getFullPath(@NonNull final File path) {
+    public String pathToString(@NonNull final File path) {
         return path.getPath();
     }
 
@@ -240,26 +240,13 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
     }
 
     /**
-     * Convert the path to a URI for the return intent
-     *
-     * @param file either a file or directory
-     * @return a Uri
-     */
-    @NonNull
-    @Override
-    public Uri toUri(@NonNull final File file) {
-        return Uri.fromFile(file);
-    }
-
-    /**
      * Get a loader that lists the Files in the current path,
      * and monitors changes.
      */
     @NonNull
     @Override
     public Loader<List<File>> getLoader() {
-        return new AsyncTaskLoader<List<File>>(getActivity()) {
-
+        return new AsyncTaskLoader<>(requireContext()) {
             FileObserver fileObserver;
 
             @Override
@@ -271,7 +258,6 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
                 }
 
                 ArrayList<File> files = new ArrayList<>(listFiles.length);
-
                 for (File f : listFiles) {
                     if (f.isHidden() && !areHiddenItemsShown())
                         continue;
@@ -280,12 +266,7 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
                     files.add(f);
                 }
 
-                Collections.sort(files, new Comparator<File>() {
-                    @Override
-                    public int compare(File lhs, File rhs) {
-                        return compareFiles(lhs, rhs);
-                    }
-                });
+                Collections.sort(files, (lhs, rhs) -> compareFiles(lhs, rhs));
 
                 return files;
             }
@@ -349,13 +330,10 @@ public class FilePickerFragment extends AbstractFilePickerFragment<File> {
      * and 1 if rhs should be placed before lhs
      */
     protected int compareFiles(@NonNull File lhs, @NonNull File rhs) {
-        if (lhs.isDirectory() && !rhs.isDirectory()) {
-            return -1;
-        } else if (rhs.isDirectory() && !lhs.isDirectory()) {
-            return 1;
-        } else {
-            return lhs.getName().compareToIgnoreCase(rhs.getName());
-        }
+        final boolean ldir = lhs.isDirectory(), rdir = rhs.isDirectory();
+        if (ldir != rdir)
+            return rdir ? 1 : -1;
+        return lhs.getName().compareToIgnoreCase(rhs.getName());
     }
 
     private static final String TAG = "mpv";
